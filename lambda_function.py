@@ -1,7 +1,68 @@
 import boto3
 import os
+from dotenv import load_dotenv
+import requests
+import time
 
 from tools import ask_model
+
+load_dotenv()
+# Telegram configuration
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+
+def get_bot_users():
+    """Get all unique users who have interacted with the bot"""
+    telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getUpdates"
+    users = set()
+    
+    try:
+        response = requests.get(telegram_url)
+        if response.ok:
+            updates = response.json()['result']
+            for update in updates:
+                if 'message' in update:
+                    user = update['message']['from']
+                    users.add((user['id'], user.get('first_name', 'Unknown'), user.get('username', 'Unknown')))
+        return users
+    except Exception as e:
+        print(f"Error getting bot users: {str(e)}")
+        return set()
+
+def broadcast_message(users, message):
+    """
+    Send message to all users
+    
+    Args:
+        users (set): Set of tuples containing (user_id, first_name, username)
+        message (str): Message to broadcast to all users
+    
+    Returns:
+        bool: True if all messages were sent successfully, False otherwise
+    """
+    telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    success = True
+    
+    for user_id, _, _ in users:
+        try:
+            payload = {
+                "chat_id": user_id,
+                "text": message,
+                "parse_mode": "HTML"
+            }
+            
+            response = requests.post(telegram_url, json=payload)
+            if not response.ok:
+                print(f"Error sending Telegram message to user {user_id}: {response.text}")
+                success = False
+            
+            # Sleep briefly to avoid hitting rate limits
+            time.sleep(0.1)
+            
+        except Exception as e:
+            print(f"Error sending to user {user_id}: {str(e)}")
+            success = False
+    
+    return success
 
 
 def summarize_messages(parameters: list) -> str:
@@ -77,7 +138,7 @@ def detect_language(parameters: list) -> str:
 
 def add_opinion(opinion_id: str, opinion: str):
     """
-    Adds an opinion to the DynamoDB table and publishes notification to SNS.
+    Adds an opinion to the DynamoDB table and broadcasts notification to all Telegram bot users.
 
     Args:
         opinion_id (str): The ID to associate the opinion with
@@ -88,9 +149,7 @@ def add_opinion(opinion_id: str, opinion: str):
     """
     dynamodb = boto3.client('dynamodb',
                           region_name='eu-central-1')
-    sns = boto3.client('sns', region_name='eu-central-1')
     table_name = 'defi_ideas'
-    topic_arn = 'arn:aws:sns:eu-central-1:035586480742:defi-opinions-topic'
 
     try:
         # First, get the existing item
@@ -118,20 +177,18 @@ def add_opinion(opinion_id: str, opinion: str):
             }
         )
 
-        # Publish notification to SNS
-        message = {
-            'opinionId': opinion_id,
-            'newOpinion': opinion,
-            'totalOpinions': len(updated_opinions)
-        }
-        
-        sns.publish(
-            TopicArn=topic_arn,
-            Message=str(message),
-            Subject=f'New Opinion Added for ID: {opinion_id}'
-        )
-        
-        return True
+        # Get all bot users
+        users = get_bot_users()
+        if not users:
+            print("No users found to send notifications to")
+            return True  # Still return True as DynamoDB operation was successful
+
+        # Prepare message
+        message = f"🔔 New Investment Idea!\n\n" \
+                 f"{opinion}\n" 
+
+        # Broadcast message to all users
+        return broadcast_message(users, message)
     except Exception as e:
         print(f"Error adding opinion: {str(e)}")
         return False
