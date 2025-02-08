@@ -72,7 +72,7 @@ async def handler(event):
     message = event.message
     #print(event)
     data =f'''
-    <opinionId>serg_defi</opinionId> <opinion>{message.message}</opinion>
+    {message.message}
     '''
     execute_agent(data)
     #await client.send_message(destination_group, message, reply_to=187)

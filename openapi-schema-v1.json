@@ -164,17 +164,17 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "opinionId": {
+                  "userId": {
                     "type": "string",
-                    "description": "Unique identifier to group related opinions"
+                    "description": "Unique identifier of the users"
                   },
                   "opinion": {
                     "type": "string",
-                    "description": "The opinion text to be stored"
+                    "description": "The message text to be stored"
                   }
                 },
                 "required": [
-                  "opinionId",
+                  "userId",
                   "opinion"
                 ]
               }
