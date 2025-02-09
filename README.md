@@ -1,4 +1,4 @@
-# DeFi Opinions Telegram Bot & Dashboard
+# Deffi analysing tool
 
 ![Project Architecture](assets/project-details.png)
 
