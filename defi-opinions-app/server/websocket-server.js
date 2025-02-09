@@ -119,8 +119,8 @@ const subscribeToSNS = async () => {
   try {
     const subscribeCommand = new SubscribeCommand({
       TopicArn: SNS_TOPIC_ARN,
-      Protocol: 'https', // or 'https' if using HTTPS
-      Endpoint: `https://b6d77s8h-8080.euw.devtunnels.ms/sns`, // Your server's endpoint to receive SNS messages
+      Protocol: 'https', 
+      Endpoint: process.env.REACT_APP_AWS_REGION, // Your server's endpoint to receive SNS messages
     });
 
     const response = await snsClient.send(subscribeCommand);

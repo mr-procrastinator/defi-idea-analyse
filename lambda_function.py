@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 import requests
 import time
+import json
 
 from tools import ask_model
 from defillama import process_invest_idea
@@ -286,6 +287,23 @@ def add_opinion(user_id: str, opinion: str):
                 'opinions': {'L': updated_opinions}
             }
         )
+
+        # Send SNS notification if user is system
+        if user_id == 'system':
+            try:
+                sns = boto3.client('sns', region_name='eu-central-1')
+                sns_payload = {
+                    "opinionId": "system",
+                    "opinion": data
+                }
+                sns.publish(
+                    TopicArn='arn:aws:sns:eu-central-1:035586480742:defi-opinions-topic',
+                    Message=json.dumps(sns_payload)
+                )
+                print("Successfully sent SNS notification")
+            except Exception as e:
+                print(f"Error sending SNS notification: {str(e)}")
+                # Continue execution even if SNS fails
 
         # Get all bot users
         users = get_bot_users()
